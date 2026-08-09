@@ -1,0 +1,21 @@
+node_modules/
+
+# Personal configuration and saved browser login
+.env
+.env.local
+.env.*.local
+.wellfound-chrome-profile/
+
+# Generated application history and daily state
+applications*.csv
+applications*.xlsx
+apply-state-*.json
+
+# Runtime diagnostics
+blocked-step-*.png
+auto-apply-*.log
+*.log
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
