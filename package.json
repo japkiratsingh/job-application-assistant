@@ -14,7 +14,11 @@
     "playwright",
     "automation"
   ],
-  "author": "",
+  "author": "Japkirat Singh Lamba",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/japkiratsingh/job-application-assistant.git"
+  },
   "license": "ISC",
   "description": "Playwright automation for applying to matching Wellfound jobs",
   "dependencies": {

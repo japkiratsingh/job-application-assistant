@@ -19,7 +19,7 @@ so you can watch it work before going live.
 
 ## Requirements
 
-- Windows 10/11 (Task Scheduler used for automatic daily runs — manual runs work anywhere Node does)
+- macOS, Linux or Windows (the commands below work in any shell; the scheduled daily run section is Windows-only)
 - [Node.js](https://nodejs.org/) 18+
 - Google Chrome
 - A Wellfound account with your profile + resume completed
@@ -28,16 +28,16 @@ so you can watch it work before going live.
 
 **1. Clone and install:**
 
-```powershell
-git clone https://github.com/MehakGarg1008/job-application-assistant.git
+```sh
+git clone https://github.com/japkiratsingh/job-application-assistant.git
 cd job-application-assistant
 npm install
 ```
 
 **2. Create your `.env`:**
 
-```powershell
-copy .env.example .env
+```sh
+cp .env.example .env
 ```
 
 Open `.env` and fill in your details — name, contact, skills, highlights, salary
@@ -50,7 +50,7 @@ question the built-in answer bank can't match gets answered by Gemini using your
 
 **3. Log in to Wellfound (one time, visible browser):**
 
-```powershell
+```sh
 node auto-apply-runner.js wellfound login
 ```
 
@@ -59,7 +59,7 @@ The session is saved to `.wellfound-chrome-profile/` and reused by every later r
 
 **4. Dry run (watch it, nothing is submitted):**
 
-```powershell
+```sh
 node auto-apply-runner.js wellfound
 ```
 
@@ -74,7 +74,7 @@ Chrome opens on the jobs feed, and you'll see forms being filled. The log
 
 **5. Go live:**
 
-```powershell
+```sh
 node auto-apply-runner.js wellfound --live
 ```
 
@@ -84,7 +84,9 @@ counted in `apply-state-wellfound.json` toward the daily cap.
 
 ## Customizing which jobs it applies to
 
-Edit the `CONFIG` block at the top of `wellfound-auto-apply.js`:
+Edit the `CONFIG` block at the top of `wellfound-auto-apply.js`. The `PITCH` block just
+below it holds the paragraphs used in every cover letter and in the "why this company?"
+answer — rewrite it in your own words before going live.
 
 | Setting | What it does |
 |---|---|
@@ -100,7 +102,10 @@ Wellfound asks, it picks "I can relocate to…" and selects the job's offered lo
 Jobs the company has location-blocked are detected and skipped. Posting age is not used
 as a filter; any visible job whose title matches your keywords can be considered.
 
-## Run it automatically every day (Task Scheduler)
+## Run it automatically every day (Windows Task Scheduler)
+
+On macOS/Linux, run `npm run wellfound:live` manually or schedule it with `launchd`/`cron`
+while you are logged in (the browser must be visible, not headless).
 
 ```powershell
 $repo = "C:\path\to\job-application-assistant"
@@ -139,6 +144,10 @@ Unregister-ScheduledTask WellfoundAutoApply  # remove
 | `applications.csv` | Every submitted application (git-ignored) |
 | `apply-state-wellfound.json` | Today's application count for the 50/day cap (git-ignored) |
 | `.wellfound-chrome-profile/` | Saved Chrome session (git-ignored) |
+
+## Credits
+
+Based on [MehakGarg1008/job-application-assistant](https://github.com/MehakGarg1008/job-application-assistant).
 
 ## Disclaimer
 

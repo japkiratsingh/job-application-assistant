@@ -63,6 +63,16 @@
     workAuth: '', github: '', linkedin: '', portfolio: '', links: '', remoteOk: '', relocate: '', startDate: '',
   };
 
+  // ============== PITCH (shared by the cover letter and the "why this company?" answer) ==============
+  // Edit this block to change what every application says about you.
+  const PITCH = `What interests me most is the opportunity to work on large-scale, high-impact engineering problems in an environment that values technical ownership, strong engineering standards, reliability, and continuous learning. In my current role at ${CV.company || 'CommerceIQ'}, I work on large-scale data pipelines, event-driven backend systems, and LLM agents — including a product scoring pipeline that processes 7-10M products daily on GCP Pub/Sub and Cloud Run, and an LLM anomaly-detection agent built with LangChain and LangGraph that cut weekly tickets by 82%.
+
+My technical experience spans TypeScript, JavaScript, Python, Java, C++, SQL, Node.js, NestJS, React, PostgreSQL, MongoDB, Redis, Neo4j, Kafka, GCP (Cloud Run, Pub/Sub, Cloud Tasks, Vertex AI), Docker, CI/CD, LangChain, LangGraph, and Gemini. I particularly enjoy taking end-to-end ownership — understanding a problem, designing the solution, developing and testing it, troubleshooting production issues, and improving its scalability, reliability, and operational stability.
+
+Before this, at Solidity Technologies, I architected an e-commerce platform from scratch for 10,000+ active users, delivered four microservices with real-time WebSocket bidding, and cut API latency by 80% (4000ms to 800ms) through query optimization, indexing, and caching.
+
+I'm now looking for an opportunity where I can bring this combination of backend engineering, distributed systems, cloud, and applied AI to new technical challenges, while continuing to learn from strong engineering teams and contribute to products that operate at meaningful scale.`;
+
   // ============== QUESTION → ANSWER BANK ==============
   // First pattern that matches the question text wins. Answers come from the CV above.
   const QA_BANK = [
@@ -80,23 +90,17 @@
     [/linkedin|github|portfolio|website|link/i, CV.links],
     // "What interests you about working for this company?" / "Why this company?" / "Why this role?" — canned polished answer.
     [/what (interests?|excites?|attracts?|draws) you|why (do you want|are you interested|this (role|company|position)|(to )?work( here)?|(to )?join)/i,
-      `What interests me most is the opportunity to work on large-scale, high-impact engineering problems in an environment that values technical ownership, strong engineering standards, reliability, and continuous learning. In my current role at Microsoft, I have worked on distributed systems, cloud platforms, system design, microservices, production reliability, automation, and AI-assisted software development, supporting business-critical workflows with significant customer and revenue impact.
-
-My technical experience spans C#, C++, Python, Java, JavaScript, SQL, .NET, REST APIs, distributed systems, microservices, Azure, Kubernetes, CI/CD, networking, GitHub Copilot, Claude, MCP, and agentic AI workflows. I particularly enjoy taking end-to-end ownership — understanding a problem, designing the solution, developing and testing it, troubleshooting production issues, and improving its scalability, reliability, and operational stability.
-
-My work has also been recognized through multiple engineering awards at Microsoft, including a Wall of Fame recognition, a Microsoft Excellence Award, and an ACE Award, which reflect my focus on high-impact delivery and operational excellence.
-
-I'm now looking for an opportunity where I can bring this combination of software engineering, cloud, distributed systems, AI-assisted development, and production ownership to new technical challenges, while continuing to learn from strong engineering teams and contribute to products that operate at meaningful scale.`],
+      PITCH],
     [/tell (us|me) about yourself|introduce yourself|about you/i,
       `I'm ${CV.name}, ${CV.currentRole}. ${CV.highlights[0] || ''}. Previously: ${CV.highlights[2] || ''}. ${CV.highlights[3] || ''}.`],
     [/(biggest|proudest|favorite) (project|achievement|accomplishment)|worked on/i,
       `${CV.highlights[0] || ''}. I owned it end to end, from architecture through deployment and CI/CD.`],
     [/react|frontend|front-end/i,
-      `Strong frontend experience: React.js, Next.js, Redux, TypeScript and Tailwind CSS, plus React Native for cross-platform mobile apps.`],
+      `Frontend experience with React and TypeScript on the web, plus React Native for cross-platform mobile apps.`],
     [/node|backend|back-end|api/i,
-      `I build production backends daily: Node.js/Express and Python/FastAPI, REST + GraphQL, WebSockets, MongoDB/PostgreSQL/Redis, on cloud with Docker and CI/CD.`],
+      `I build production backends daily: Node.js/NestJS in TypeScript and Python, REST APIs and WebSockets, PostgreSQL/MongoDB/Redis, Kafka and GCP Pub/Sub, deployed on GCP Cloud Run with Docker and CI/CD.`],
     [/\b(ai|llm|ml|machine learning|genai|langchain)\b/i,
-      `AI is a core focus: production GenAI agents, RAG pipelines, prompt engineering, tool calling, MCP and multi-agent systems.`],
+      `AI is a core focus: production LLM agents with LangChain and LangGraph tool-calling, Gemini on Vertex AI, prompt orchestration and evaluation loops.`],
     [/education|degree|university|college/i, CV.education],
     [/phone|contact number|mobile/i, CV.phone],
     [/e-?mail/i, CV.email],
@@ -115,15 +119,9 @@ I'm now looking for an opportunity where I can bring this combination of softwar
 
 I am writing to apply for the ${title || 'Software Engineer'} position at ${company || 'your company'}.
 
-I'm ${CV.name}, currently a ${CV.currentRole || 'Software Engineer at Microsoft'}, based in ${CV.location || 'India'}, with experience building and operating large-scale production systems.
+I'm ${CV.name}, currently a ${CV.currentRole || 'Software Development Engineer at CommerceIQ'}, based in ${CV.location || 'India'}, with experience building and operating large-scale production systems.
 
-What interests me most is the opportunity to work on large-scale, high-impact engineering problems in an environment that values technical ownership, strong engineering standards, reliability, and continuous learning. In my current role at Microsoft, I have worked on distributed systems, cloud platforms, system design, microservices, production reliability, automation, and AI-assisted software development, supporting business-critical workflows with significant customer and revenue impact.
-
-My technical experience spans C#, C++, Python, Java, JavaScript, SQL, .NET, REST APIs, distributed systems, microservices, Azure, Kubernetes, CI/CD, networking, GitHub Copilot, Claude, MCP, and agentic AI workflows. I particularly enjoy taking end-to-end ownership — understanding a problem, designing the solution, developing and testing it, troubleshooting production issues, and improving its scalability, reliability, and operational stability.
-
-My work has also been recognized through multiple engineering awards at Microsoft, including a Wall of Fame recognition, a Microsoft Excellence Award, and an ACE Award, which reflect my focus on high-impact delivery and operational excellence.
-
-I'm now looking for an opportunity where I can bring this combination of software engineering, cloud, distributed systems, AI-assisted development, and production ownership to new technical challenges, while continuing to learn from strong engineering teams and contribute to products that operate at meaningful scale.
+${PITCH}
 
 Thank you for your time.
 

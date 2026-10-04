@@ -122,9 +122,10 @@ const XLSX_COLUMNS = [
   { header: 'Job Link', key: 'link', width: 60 },
   { header: 'Job Description', key: 'jd', width: 80 },
 ];
-const SKILLS = ['JavaScript', 'TypeScript', 'Python', 'Java', 'React', 'Next.js', 'React Native', 'Node.js',
-  'Express', 'FastAPI', 'MongoDB', 'PostgreSQL', 'Redis', 'GraphQL', 'WebSockets', 'Docker', 'Kubernetes',
-  'GCP', 'AWS', 'CI/CD', 'LangChain', 'LangGraph', 'RAG', 'LLM', 'GenAI', 'Machine Learning', 'MCP', 'Pinecone', 'FAISS'];
+const SKILLS = ['JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'React', 'Next.js', 'React Native', 'Node.js',
+  'NestJS', 'Express', 'FastAPI', 'MongoDB', 'PostgreSQL', 'Redis', 'Neo4j', 'Kafka', 'Pub/Sub', 'GraphQL', 'WebSockets',
+  'Microservices', 'Docker', 'Kubernetes', 'GCP', 'AWS', 'CI/CD', 'LangChain', 'LangGraph', 'Gemini', 'RAG', 'LLM',
+  'GenAI', 'Machine Learning', 'MCP', 'Pinecone', 'FAISS'];
 const matchSkills = (t) => { const l = t.toLowerCase(); return SKILLS.filter((s) => l.includes(s.toLowerCase())).join('; '); };
 const csvRow = (vals) => vals.map((v) => '"' + String(v || '').replace(/"/g, '""').replace(/\s+/g, ' ').trim() + '"').join(',') + '\n';
 
