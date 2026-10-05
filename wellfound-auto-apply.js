@@ -47,9 +47,12 @@
       'java developer', 'python developer', 'golang', 'go developer', 'go engineer',
       'next.js', 'nextjs', 'programmer'
     ],
-    // Skip jobs whose title contains any of these
+    // Skip jobs whose title contains any of these (plain text = substring, /regex/ = pattern on the lower-cased title)
     TITLE_BLOCKLIST: [
       'senior', 'principal', 'director', 'manager', 'lead',
+      /\bsr\b/,                    // "Sr. AI Engineer", "Sr Backend Engineer" (not "SRE")
+      /(?<!technical )\bstaff\b/,  // "Staff Software Engineer", but keep "Member of Technical Staff"
+      'distinguished', 'android', 'robotics',
       'data engineer', 'qa', 'test', 'intern', 'designer', 'sales', 'marketing',
       'teacher', 'trainer', 'tutor', 'instructor', 'coach', 'ios', 'android native', 'flutter', 'content','account executive', 'account'
     ],
@@ -182,14 +185,52 @@ ${links}`;
       .map((e) => (e.children.length === 0 ? e.textContent.trim() : ''))
       .find((t) => /^apply to .{2,60}$/i.test(t));
     if (panelHeader) return panelHeader.replace(/^apply to /i, '').trim();
-    const el =
-      document.querySelector('a[href^="/company/"] h2') ||
-      document.querySelector('[data-test="StartupHeader"] h1') ||
-      document.querySelector('a[href^="/company/"]');
+    // Fallbacks look inside the open job overlay only — document-wide they would
+    // return the first company card of the feed behind it (the wrong company).
+    const overlay = jobOverlay();
+    const el = overlay && (
+      overlay.querySelector('a[href^="/company/"] h2') ||
+      overlay.querySelector('[data-test="StartupHeader"] h1') ||
+      overlay.querySelector('a[href^="/company/"]'));
     let name = (el?.textContent || '').split('\n')[0].replace(/\s+/g, ' ').trim();
     // Reject obvious non-names (section headings, buttons, follower counts)
     if (/about the job|about us|apply|jobs|follow|save|^$/i.test(name) || name.split(' ').length > 6) name = '';
     return name;
+  }
+
+  // The job overlay (ReactModal with the description + "Apply to <Company>" panel).
+  function jobOverlay() {
+    return [...document.querySelectorAll('[role="dialog"]')].filter((d) => d.getClientRects().length > 0).pop() || null;
+  }
+
+  // Close the job overlay. Its ✕ has no label/text, so match its class, and also
+  // send Escape (ReactModal closes on it). Resolves once the overlay is gone.
+  async function closeJobOverlay() {
+    const overlay = jobOverlay();
+    if (!overlay) return true;
+    overlay.querySelector('button[class*="closeButton" i]')?.click();
+    await sleep(500);
+    if (jobOverlay()) {
+      for (const target of [document.querySelector('.ReactModal__Content') || document.body, document]) {
+        target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', keyCode: 27, which: 27, bubbles: true }));
+      }
+    }
+    return !!(await waitFor(() => !jobOverlay(), 4000));
+  }
+
+  // Send this job's details — read from its own overlay, not the feed behind it —
+  // to the runner for the CSV/XLSX log. No-op when pasted into the DevTools console.
+  function reportJobDetails(job, company) {
+    if (typeof window.__aaJobDetails !== 'function') return;
+    const overlay = jobOverlay();
+    const text = overlay?.innerText || '';
+    const listedSkills = ((text.match(/\nSkills\n([\s\S]{0,400}?)\nAbout the job/) || [])[1] || '').replace(/\n+/g, ', ');
+    window.__aaJobDetails({
+      link: job.href, title: job.title, company,
+      salary: job.salary || (text.match(/[₹$€£]\s?[\d.,]+\s?[kKLM]?\s?(?:[–-]\s?[₹$€£]?\s?[\d.,]+\s?[kKLM]?)?/) || [''])[0].trim(),
+      jd: (overlay?.querySelector('[class*="description" i]')?.innerText || '').trim(),
+      listedSkills,
+    });
   }
 
   function findButtonByText(root, regex) {
@@ -733,7 +774,7 @@ ${links}`;
   const titleOk = (t) => {
     const lower = t.toLowerCase();
     return CONFIG.TITLE_KEYWORDS.some((k) => lower.includes(k)) &&
-           !CONFIG.TITLE_BLOCKLIST.some((k) => lower.includes(k));
+           !CONFIG.TITLE_BLOCKLIST.some((k) => (k instanceof RegExp ? k.test(lower) : lower.includes(k)));
   };
 
   // 2026 UI: job cards no longer carry an Apply button. Clicking the job link opens
@@ -750,10 +791,16 @@ ${links}`;
       row = row || a.parentElement;
       // already applied? the card shows an "Applied" stamp
       if (SELECTORS.alreadyApplied.test([...row.querySelectorAll('button, span')].map((e) => e.textContent.trim()).find((t) => /^applied$/i.test(t)) || '')) continue;
-      const company = (row.querySelector('img[alt*="logo" i]')?.alt || '')
-        .replace(/company logo/i, '').trim();
-      const salary = (row.textContent.match(/(?:₹|\$|€)\s?[\d.,k]+\s?(?:[–-]\s?(?:₹|\$|€)?\s?[\d.,k]+)?k?/i) || [''])[0].trim();
-      rows.push({ href: a.href, title: cleanTitle(a.textContent), company, salary, linkEl: a });
+      // 2026 UI: the link holds one <span> per fact (title, work mode, location, salary…)
+      const facts = [...a.querySelectorAll('span')].filter((sp) => sp.children.length === 0).map((sp) => sp.textContent.trim()).filter(Boolean);
+      // the company name/logo sits in the card header, a few levels above the job link
+      let company = '';
+      for (let card = a.parentElement, i = 0; i < 12 && card && !company; i++, card = card.parentElement) {
+        company = card.querySelector('a[href^="/company/"] h2')?.textContent.trim() ||
+          (card.querySelector('img[alt*="logo" i]')?.alt || '').replace(/company logo/i, '').trim();
+      }
+      const salary = (facts.find((t) => /[₹$€£]\s?\d/.test(t)) || '').split('•')[0].trim(); // "₹40L – ₹60L • 0.05%" → salary only
+      rows.push({ href: a.href, title: cleanTitle(facts[0] || a.textContent), company, salary, linkEl: a });
     }
     return rows;
   }
@@ -776,6 +823,10 @@ ${links}`;
     const scroller = findJobFeedScroller(beforeRows);
 
     if (scroller === document.scrollingElement || scroller === document.documentElement || scroller === document.body) {
+      // step back up first: the feed lazy-loads on scroll movement, and a second
+      // scrollTo(bottom) while already at the bottom fires nothing
+      window.scrollTo(0, Math.max(0, scroller.scrollHeight - 1500));
+      await sleep(400);
       window.scrollTo(0, scroller.scrollHeight);
     } else {
       scroller.scrollTop = scroller.scrollHeight;
@@ -852,12 +903,14 @@ ${links}`;
       if (more) { more.click(); await sleep(3000); continue; }
       // Infinite-scroll feed: Wellfound usually puts cards in a nested scrolling
       // panel, so scrolling `window` alone keeps returning the same 11–13 cards.
+      // The feed loads ~10 cards per batch and can take a few scrolls to respond —
+      // give up only after 4 scrolls in a row bring no new cards.
       let grew = false;
-      for (let s = 0; s < 12 && !grew; s++) {
+      for (let s = 0, stale = 0; s < 20 && !grew && stale < 4; s++) {
         const result = await scrollJobFeed(seen);
         if (s === 0) log(`  ↳ scrolling job feed via ${result.scroller}`);
         grew = result.matchingJob;
-        if (!result.newCards && !result.matchingJob && s >= 2) break;
+        stale = result.newCards ? 0 : stale + 1;
       }
       if (grew) continue;
 
@@ -870,20 +923,31 @@ ${links}`;
     const job = jobs[0];
     rememberSeen(job.href);
     log(`▶ Applying: ${job.title} @ ${job.company || '?'} | ${job.href} | ${job.salary || ''}`);
+    // Start from a closed overlay: a leftover one keeps showing the PREVIOUS job
+    // for a few seconds after the click, and we would read/fill the wrong job.
+    await closeJobOverlay();
     job.linkEl.scrollIntoView({ block: 'center' });
     await sleep(500);
     job.linkEl.click(); // SPA overlay opens with the "Apply to <Company>" panel
+    const jobId = (job.href.match(/\/jobs\/(\d+)/) || [])[1] || '';
+    const opened = await waitFor(() => location.search.includes('job_listing_slug=' + jobId) && jobOverlay()?.querySelector('h1'), 10000);
+    if (!opened) {
+      log('  ⚠ job overlay did not open for this job — skipping');
+      await sleep(3000);
+      continue;
+    }
     await sleep(3000);
 
-    const ok = await fillAndSubmit(job.company || getCompany(), job.title);
+    const company = job.company || getCompany();
+    reportJobDetails(job, company);
+    const ok = await fillAndSubmit(company, job.title);
     if (ok) {
       applied++;
       log(`  progress: ${applied}/${CONFIG.MAX_APPLICATIONS}`);
     }
     // close the job overlay (top-right ✕) so the next card is clickable
     await sleep(1000);
-    (document.querySelector('button[aria-label="Close" i], [class*="Modal" i] button[class*="close" i]') ||
-      findButtonByText(document, /^×$|^✕$/))?.click();
+    await closeJobOverlay();
     await sleep(1000);
     await humanDelay();
   }

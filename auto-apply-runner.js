@@ -126,7 +126,9 @@ const SKILLS = ['JavaScript', 'TypeScript', 'Python', 'Java', 'C++', 'React', 'N
   'NestJS', 'Express', 'FastAPI', 'MongoDB', 'PostgreSQL', 'Redis', 'Neo4j', 'Kafka', 'Pub/Sub', 'GraphQL', 'WebSockets',
   'Microservices', 'Docker', 'Kubernetes', 'GCP', 'AWS', 'CI/CD', 'LangChain', 'LangGraph', 'Gemini', 'RAG', 'LLM',
   'GenAI', 'Machine Learning', 'MCP', 'Pinecone', 'FAISS'];
-const matchSkills = (t) => { const l = t.toLowerCase(); return SKILLS.filter((s) => l.includes(s.toLowerCase())).join('; '); };
+// whole-word match, so "Java" doesn't hit "JavaScript" and "RAG" doesn't hit "storage"
+const matchSkills = (t) => SKILLS.filter((s) =>
+  new RegExp('(^|[^a-z0-9])' + s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z0-9])', 'i').test(t)).join('; ');
 const csvRow = (vals) => vals.map((v) => '"' + String(v || '').replace(/"/g, '""').replace(/\s+/g, ' ').trim() + '"').join(',') + '\n';
 
 // Append one row to applications.xlsx (opens → adds → saves). Safe to call after
@@ -241,6 +243,19 @@ function buildInjection() {
     }
   });
 
+  // Job details for the CSV/XLSX log, sent by the site script from the job's own overlay.
+  // Scraping the page from here instead picks up the first card of the feed behind it.
+  await ctx.exposeBinding('__aaJobDetails', (_source, d) => {
+    if (!d) return;
+    if (!pendingJob || (d.link && pendingJob.link !== d.link)) pendingJob = { title: d.title || '', link: d.link || '' };
+    const jd = String(d.jd || '');
+    Object.assign(pendingJob, {
+      fromPage: true, company: d.company || '', salary: d.salary || '', jd: jd.slice(0, 1200),
+      skills: matchSkills([pendingJob.title, d.listedSkills, jd].join(' ')),
+    });
+    log(`  details: company="${pendingJob.company}" salary="${pendingJob.salary}" skills="${pendingJob.skills}" jd=${jd.length} chars`);
+  });
+
   log(`Starting. mode=${LIVE ? 'LIVE' : 'DRY RUN'} target=${TARGET} applications, max ${MAX_RUNTIME_MS / 60000} min`);
   // buildInjection() reads the script from disk each call, so any edits to the
   // site script take effect on the next page navigation without restarting node.
@@ -249,6 +264,7 @@ function buildInjection() {
   let lastActivity = Date.now();
   let searchIdx = 0;
   let pendingJob = null; // details of the job currently being applied to, for the CSV
+  let feedExhausted = false; // site script reported it ran out of matching jobs on this search
 
   const isBusy = (p) => p.evaluate('!!window.__aaBusy').catch(() => false);
 
@@ -259,6 +275,7 @@ function buildInjection() {
       lastActivity = Date.now();
       const clean = text.replace(/%c\[auto-apply\]\s*\S*/, '').trim();
       log('  ' + clean.slice(0, 160));
+      if (/All search pages exhausted/.test(clean)) feedExhausted = true;
 
       // snapshot the wizard whenever it can't proceed, so the blocking field is visible
       if (/no Continue\/Submit button found|no Send button found/.test(clean)) {
@@ -285,7 +302,7 @@ function buildInjection() {
               jd: (q('#jobDescriptionText') || q('[class*="jobDescription" i]') || q('[class*="description" i]')).slice(0, 1200),
             };
           }).then((d) => {
-            if (!d || !pendingJob) return;
+            if (!d || !pendingJob || pendingJob.fromPage) return; // site script already sent exact details
             pendingJob.company = pendingJob.company || d.company;
             pendingJob.salary = pendingJob.salary || d.salary;
             pendingJob.jd = d.jd;
@@ -355,7 +372,9 @@ function buildInjection() {
     }
 
     if (!anyBusy) {
-      if (Date.now() - lastActivity > IDLE_ROTATE_MS) {
+      // Re-injecting on an exhausted feed just rescans the same cards every 45s until the deadline.
+      if (feedExhausted || Date.now() - lastActivity > IDLE_ROTATE_MS) {
+        feedExhausted = false;
         searchIdx++;
         if (searchIdx >= site.searches.length) { log('All searches exhausted for today.'); break; }
         log(`Rotating to next search: ${site.searches[searchIdx]}`);
